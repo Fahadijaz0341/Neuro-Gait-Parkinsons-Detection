@@ -1,4 +1,4 @@
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://fahad-neuro-gait.streamlit.app/)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://parkinson-detector-ai.streamlit.app/)
 
 # 🧠 Neuro-Gait Analyzer: Parkinson's Disease Detection
 
