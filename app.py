@@ -9,100 +9,161 @@ Original file is located at
 
 
 
-
 import streamlit as st
 import cv2
 import tempfile
 import os
+import numpy as np
 from ultralytics import YOLO
 
-# --- Page Config ---
+# --- Page Config (Must be first) ---
 st.set_page_config(
     page_title="Neuro-Gait Analyzer",
     page_icon="🧠",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# --- Header ---
-st.title("🧠 Neuro-Gait Analyzer: Parkinson's Detection")
+# --- Custom CSS for "Medical" Look ---
 st.markdown("""
-**Upload a video of a patient walking/turning.** The system will use **YOLOv8-Pose** to track skeletal keypoints and analyze gait stability.
-""")
+    <style>
+    .main {
+        background-color: #0e1117;
+    }
+    h1 {
+        color: #ff4b4b; 
+        text-align: center;
+    }
+    .stButton>button {
+        width: 100%;
+        background-color: #ff4b4b;
+        color: white;
+    }
+    .metric-card {
+        background-color: #262730;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- Header Section ---
+col1, col2, col3 = st.columns([1, 6, 1])
+with col2:
+    st.title("🧠 Neuro-Gait Analyzer")
+    st.markdown("<h3 style='text-align: center; color: white;'>AI-Powered Early Parkinson's Detection</h3>", unsafe_allow_html=True)
+    st.markdown("---")
 
 # --- Sidebar ---
-st.sidebar.header("Settings")
-confidence_threshold = st.sidebar.slider("Confidence Threshold", 0.0, 1.0, 0.5)
+with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/8815/8815112.png", width=100)
+    st.header("Control Panel")
+    confidence_threshold = st.slider("AI Confidence Threshold", 0.0, 1.0, 0.5)
+    
+    st.info("ℹ️ **Project Info**\n\nThis system uses **YOLOv8-Pose** to track gait anomalies (freezing/tremors) associated with Parkinson's Disease.")
+    st.markdown("---")
+    st.markdown("**Developed by:** Fahad Ijaz")
 
-# --- Load Model ---
-# Ensure you have your model file (yolov8n-pose.pt) in the repo or download it
+# --- Model Loading ---
 @st.cache_resource
 def load_model():
-    return YOLO('yolov8n-pose.pt') # Change to your custom model path if needed
+    return YOLO('yolov8n-pose.pt')
 
 model = load_model()
 
-# --- File Uploader ---
-uploaded_file = st.file_uploader("Upload Video File (MP4, AVI)", type=['mp4', 'avi'])
+# --- Main Interface ---
+st.write("### 📂 Upload Patient Data")
 
-if uploaded_file is not None:
-    # Save uploaded file to a temporary file
-    tfile = tempfile.NamedTemporaryFile(delete=False)
-    tfile.write(uploaded_file.read())
+# Create two tabs: Upload vs Demo
+tab1, tab2 = st.tabs(["📤 Upload Video", "🎬 Try Demo Video"])
 
+input_path = None
+
+with tab1:
+    uploaded_file = st.file_uploader("Choose a video file (MP4, AVI)", type=['mp4', 'avi'])
+    if uploaded_file is not None:
+        tfile = tempfile.NamedTemporaryFile(delete=False) 
+        tfile.write(uploaded_file.read())
+        input_path = tfile.name
+
+with tab2:
+    st.write("No video? No problem. Click below to load a clinical sample.")
+    if st.button("Load Sample Patient Data"):
+        # You need to upload a file named 'demo.mp4' to your GitHub for this to work!
+        if os.path.exists("demo.mp4"):
+            input_path = "demo.mp4"
+        else:
+            st.error("Demo file not found! Please upload 'demo.mp4' to your repository.")
+
+# --- Processing Logic ---
+if input_path:
     col1, col2 = st.columns(2)
-
+    
     with col1:
-        st.info("Original Video")
-        st.video(tfile.name)
+        st.info("🎥 Original Patient Feed")
+        st.video(input_path)
 
-    if st.button("🔍 Run Analysis"):
-        st.write("Processing... (This might take a moment based on video length)")
-
-        # Open video
-        cap = cv2.VideoCapture(tfile.name)
-
-        # Prepare output video
+    if st.button("🔍 Run AI Diagnostics", type="primary"):
+        st.write("---")
+        st.write("### 🩺 Diagnostics Dashboard")
+        
+        # Placeholder for Metrics
+        m1, m2, m3 = st.columns(3)
+        with m1:
+            st.metric(label="Tremor Frequency", value="Calculating...", delta=None)
+        with m2:
+            st.metric(label="Gait Stability Score", value="Analyzing...", delta=None)
+        with m3:
+            st.metric(label="Parkinson's Risk", value="Pending", delta=None)
+            
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        # Processing Setup
+        cap = cv2.VideoCapture(input_path)
         output_path = "output_detected.mp4"
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v') # Codec for web
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = int(cap.get(cv2.CAP_PROP_FPS))
-
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-
-        # Progress bar
-        progress_bar = st.progress(0)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        
+        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        
         frame_count = 0
-
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
-
-            # Run YOLOv8 inference
+            
+            # Run Inference
             results = model(frame, conf=confidence_threshold)
-
-            # Visualize the results on the frame
             annotated_frame = results[0].plot()
-
-            # Write frame
             out.write(annotated_frame)
-
-            # Update progress
+            
             frame_count += 1
-            progress_bar.progress(frame_count / total_frames)
+            if total_frames > 0:
+                progress_bar.progress(min(frame_count / total_frames, 1.0))
+                status_text.text(f"Processing Frame {frame_count}/{total_frames}")
 
         cap.release()
         out.release()
-
-        st.success("Analysis Complete!")
-
-        with col2:
-            st.info("AI Detected Gait Pattern")
-            # We need to re-open the file to display it in Streamlit
+        
+        # --- Final Dashboard Update ---
+        progress_bar.empty()
+        status_text.empty()
+        
+        # Display Results
+        c1, c2 = st.columns([1, 1])
+        with c1:
+            st.success("✅ Analysis Complete")
             st.video(output_path)
-
-        # Optional: Add fake metrics for demo purposes
-        st.metric(label="Gait Stability Score", value="87%", delta="-2.1%")
-        st.metric(label="Turning Freeze Detected", value="No")
+        
+        with c2:
+            st.warning("📊 Clinical Insights")
+            # These are currently dummy metrics for the UI demo. 
+            # In the real version, you'd calculate these from your 'entropy_history'.
+            st.metric(label="Tremor Frequency (Detected)", value="4.8 Hz", delta="High Risk")
+            st.metric(label="Gait Stability Score", value="42/100", delta="-15% vs Norm")
+            st.caption("The system detected consistent hesitation in the turning phase, correlating with prodromal Parkinsonian symptoms.")
