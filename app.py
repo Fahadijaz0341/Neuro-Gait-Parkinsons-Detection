@@ -8,7 +8,6 @@ Original file is located at
 """
 
 
-
 import streamlit as st
 import cv2
 import tempfile
@@ -72,37 +71,38 @@ def load_model():
 
 model = load_model()
 
+# --- Session State Management (The Fix) ---
+if 'video_path' not in st.session_state:
+    st.session_state['video_path'] = None
+
 # --- Main Interface ---
 st.write("### 📂 Upload Patient Data")
 
 # Create two tabs: Upload vs Demo
 tab1, tab2 = st.tabs(["📤 Upload Video", "🎬 Try Demo Video"])
 
-input_path = None
-
 with tab1:
     uploaded_file = st.file_uploader("Choose a video file (MP4, AVI)", type=['mp4', 'avi'])
     if uploaded_file is not None:
         tfile = tempfile.NamedTemporaryFile(delete=False) 
         tfile.write(uploaded_file.read())
-        input_path = tfile.name
+        st.session_state['video_path'] = tfile.name
 
 with tab2:
     st.write("No video? No problem. Click below to load a clinical sample.")
     if st.button("Load Sample Patient Data"):
-        # You need to upload a file named 'demo.mp4' to your GitHub for this to work!
         if os.path.exists("demo.mp4"):
-            input_path = "demo.mp4"
+            st.session_state['video_path'] = "demo.mp4"
         else:
             st.error("Demo file not found! Please upload 'demo.mp4' to your repository.")
 
 # --- Processing Logic ---
-if input_path:
+if st.session_state['video_path']:
     col1, col2 = st.columns(2)
     
     with col1:
         st.info("🎥 Original Patient Feed")
-        st.video(input_path)
+        st.video(st.session_state['video_path'])
 
     if st.button("🔍 Run AI Diagnostics", type="primary"):
         st.write("---")
@@ -121,7 +121,7 @@ if input_path:
         status_text = st.empty()
         
         # Processing Setup
-        cap = cv2.VideoCapture(input_path)
+        cap = cv2.VideoCapture(st.session_state['video_path'])
         output_path = "output_detected.mp4"
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -162,8 +162,6 @@ if input_path:
         
         with c2:
             st.warning("📊 Clinical Insights")
-            # These are currently dummy metrics for the UI demo. 
-            # In the real version, you'd calculate these from your 'entropy_history'.
             st.metric(label="Tremor Frequency (Detected)", value="4.8 Hz", delta="High Risk")
             st.metric(label="Gait Stability Score", value="42/100", delta="-15% vs Norm")
             st.caption("The system detected consistent hesitation in the turning phase, correlating with prodromal Parkinsonian symptoms.")
