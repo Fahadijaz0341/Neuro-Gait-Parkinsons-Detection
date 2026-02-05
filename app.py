@@ -63,7 +63,7 @@ if uploaded_file is not None:
 
         # Prepare output video
         output_path = "output_detected.mp4"
-        fourcc = cv2.VideoWriter_fourcc(*'h264') # Codec for web
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v') # Codec for web
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = int(cap.get(cv2.CAP_PROP_FPS))
