@@ -7,9 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/10bfF6zTGzf0sLwg02dLYkT7IoBG3MQ2i
 """
 
-!pip install streamlit
-
-!pip install ultralytics
 
 
 
